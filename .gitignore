@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+*/node_modules/
+venv/
+env/
+.venv/
+
+# Build artifacts
+dist/
+build/
+
+# Python
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*.py[cod]
+*$py.class
+
+# Database & Uploads
+*.db
+*.sqlite3
+uploads/
+backend/uploads/
+
+# Environment & IDE
+.env
+.DS_Store
+*.log
+.vscode/
+.idea/
