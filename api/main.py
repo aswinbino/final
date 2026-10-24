@@ -1,1 +1,1 @@
-from backend.main import app
+import importlib.util, pathlib, sys\n\n# Load the FastAPI app defined in backend/main.py\nbackend_path = pathlib.Path(__file__).resolve().parents[2] / "backend" / "main.py"\nspec = importlib.util.spec_from_file_location("backend_main", backend_path)\nbackend_main = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(backend_main)\napp = backend_main.app\n
