@@ -10,6 +10,25 @@ const apiClient = axios.create({
 });
 
 export const api = {
+  // Target API Schema: POST /api/v1/contracts/analyze
+  analyzeContract: async (params) => {
+    // If params is a FormData (file upload)
+    if (params instanceof FormData) {
+      const res = await apiClient.post('/contracts/analyze', params, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data;
+    }
+    // If params is a JSON object
+    const res = await apiClient.post('/contracts/analyze', params);
+    return res.data;
+  },
+
+  getAnalyzedContract: async (contractId, role = 'Freelancer / Contractor') => {
+    const res = await apiClient.get(`/contracts/${contractId}/analyze?role=${encodeURIComponent(role)}`);
+    return res.data;
+  },
+
   // Module 1: Upload & status
   uploadContract: async (file) => {
     const formData = new FormData();
@@ -26,8 +45,8 @@ export const api = {
   },
 
   // Module 2: Clause extraction
-  extractClauses: async (contractId, userRole = 'General') => {
-    const res = await apiClient.post(`/extract-clauses/${contractId}?user_role=${userRole}`);
+  extractClauses: async (contractId, userRole = 'Freelancer / Contractor') => {
+    const res = await apiClient.post(`/extract-clauses/${contractId}?user_role=${encodeURIComponent(userRole)}`);
     return res.data;
   },
 
@@ -37,7 +56,7 @@ export const api = {
   },
 
   // Modules 3-5: Risk analysis & user context
-  runRiskAnalysis: async (contractId, userRole = 'General') => {
+  runRiskAnalysis: async (contractId, userRole = 'Freelancer / Contractor') => {
     const res = await apiClient.post('/risk-analysis', {
       contract_id: contractId,
       user_role: userRole,
@@ -51,7 +70,7 @@ export const api = {
   },
 
   // Module 6: What-If analysis
-  runWhatIf: async (contractId, query, userRole = 'General') => {
+  runWhatIf: async (contractId, query, userRole = 'Freelancer / Contractor') => {
     const res = await apiClient.post('/what-if', {
       contract_id: contractId,
       query,
@@ -81,7 +100,7 @@ export const api = {
   },
 
   // Module 10: Reports
-  generateReport: async (contractId, userRole = 'General', format = 'json') => {
+  generateReport: async (contractId, userRole = 'Freelancer / Contractor', format = 'json') => {
     const res = await apiClient.post('/report', {
       contract_id: contractId,
       user_role: userRole,

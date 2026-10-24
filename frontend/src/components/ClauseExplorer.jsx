@@ -9,47 +9,66 @@ import {
   FileText,
   Shield,
   Layers,
-  Sparkles
+  Sparkles,
+  Copy,
+  Check,
+  Scale,
+  ArrowRightLeft,
+  Info
 } from 'lucide-react';
 
-const CATEGORIES = [
+const CORE_CATEGORIES = [
   'All',
-  'Payment',
-  'Termination',
-  'Liability',
-  'Confidentiality',
-  'IP',
-  'Penalties',
-  'Renewal',
-  'Dispute Resolution',
-  'Obligations',
-  'General',
+  'Payment Terms & Fees',
+  'Termination & Cancellation',
+  'Liability & Indemnification',
+  'Confidentiality & Non-Disclosure',
+  'Intellectual Property Rights (IP)',
+  'Penalties & Liquidated Damages',
+  'Renewal Terms & Extensions',
+  'Dispute Resolution & Governing Law',
 ];
 
-export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
+export default function ClauseExplorer({ clauses, selectedSeverity = 'All', activeRole = 'Freelancer / Contractor' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [severityFilter, setSeverityFilter] = useState(selectedSeverity);
   const [selectedClauseEvidence, setSelectedClauseEvidence] = useState(null);
+  const [copiedClauseId, setCopiedClauseId] = useState(null);
+
+  const handleCopyProposal = (clauseId, text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedClauseId(clauseId);
+    setTimeout(() => setCopiedClauseId(null), 2500);
+  };
 
   const filteredClauses = useMemo(() => {
     if (!clauses) return [];
     return clauses.filter((clause) => {
-      // Category filter
-      if (selectedCategory !== 'All' && clause.category !== selectedCategory) {
-        return false;
+      // Category filter (match full or partial name)
+      if (selectedCategory !== 'All') {
+        const cat = (clause.category || '').toLowerCase();
+        const sel = selectedCategory.toLowerCase();
+        if (!cat.includes(sel.split(' ')[0]) && !sel.includes(cat.split(' ')[0])) {
+          return false;
+        }
       }
       // Severity filter
-      if (severityFilter !== 'All' && clause.risk_level !== severityFilter) {
-        return false;
+      if (severityFilter !== 'All') {
+        const sev = (clause.risk_level || '').toUpperCase();
+        const target = severityFilter.toUpperCase();
+        if (!sev.includes(target) && !target.includes(sev)) {
+          return false;
+        }
       }
       // Search term
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
-        const textMatch = clause.raw_text?.toLowerCase().includes(query) || clause.cleaned_text?.toLowerCase().includes(query);
-        const reasonMatch = clause.risk_reasoning?.toLowerCase().includes(query);
-        const categoryMatch = clause.category?.toLowerCase().includes(query);
-        if (!textMatch && !reasonMatch && !categoryMatch) return false;
+        const textMatch = (clause.verbatim_text || clause.raw_text || clause.cleaned_text || '').toLowerCase().includes(query);
+        const explMatch = (clause.simple_explanation || '').toLowerCase().includes(query);
+        const statMatch = (clause.legal_evidence || '').toLowerCase().includes(query);
+        const catMatch = (clause.category || '').toLowerCase().includes(query);
+        if (!textMatch && !explMatch && !statMatch && !catMatch) return false;
       }
       return true;
     });
@@ -58,8 +77,24 @@ export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
   return (
     <div className="space-y-6">
       
-      {/* Search and Filters Bar */}
-      <div className="glass-panel p-4 border border-slate-800 bg-slate-900/60 rounded-xl space-y-3">
+      {/* 6 Core Modules Banner Indicator */}
+      <div className="glass-panel p-4 border border-indigo-900/50 bg-gradient-to-r from-indigo-950/40 to-slate-900/70 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <Scale className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+          <div>
+            <span className="font-bold text-white">Modules 2, 3 & 4 · Explainable NLP & Actionable Mitigation</span>
+            <p className="text-slate-400 text-[11px]">
+              Every clause is classified across 8 legal provisions with plain-language summaries, statutory doctrines, and copyable counter-proposals.
+            </p>
+          </div>
+        </div>
+        <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-mono text-[11px] font-semibold flex-shrink-0">
+          Personalized for {activeRole}
+        </span>
+      </div>
+
+      {/* Search and Category Filters Bar */}
+      <div className="glass-panel p-5 border border-slate-800 bg-slate-900/70 rounded-2xl space-y-4 shadow-xl">
         <div className="flex flex-col md:flex-row gap-3">
           
           {/* Keyword Search */}
@@ -67,68 +102,81 @@ export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search clause text, legal reasons, or risk triggers..."
+              placeholder="Search clause text, simple explanations, statutory doctrines, or counter-proposals..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
             />
           </div>
 
-          {/* Severity filter buttons */}
+          {/* Qualitative Severity Badging Filter Buttons */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {['All', 'High', 'Medium', 'Low'].map((sev) => (
-              <button
-                key={sev}
-                onClick={() => setSeverityFilter(sev)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  severityFilter === sev
-                    ? sev === 'High' ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-                    : sev === 'Medium' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    : sev === 'Low' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-indigo-600/30 text-cyan-300 border border-indigo-500/40'
-                    : 'bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-              >
-                {sev}
-              </button>
-            ))}
+            {['All', 'HIGH', 'MEDIUM', 'LOW'].map((sev) => {
+              const label = sev === 'All' ? 'All Severities' : sev === 'HIGH' ? 'HIGH RISK' : sev === 'MEDIUM' ? 'MEDIUM CAUTION' : 'LOW RISK';
+              const isSelected = severityFilter.toUpperCase() === sev;
+              return (
+                <button
+                  key={sev}
+                  onClick={() => setSeverityFilter(sev)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    isSelected
+                      ? sev === 'HIGH' ? 'bg-red-500/25 text-red-300 border border-red-500/60 shadow-lg shadow-red-500/10'
+                      : sev === 'MEDIUM' ? 'bg-amber-500/25 text-amber-300 border border-amber-500/60 shadow-lg shadow-amber-500/10'
+                      : sev === 'LOW' ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/60 shadow-lg shadow-emerald-500/10'
+                      : 'bg-indigo-600/30 text-cyan-300 border border-indigo-500/50'
+                      : 'bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
         </div>
 
-        {/* Category Pill Filters */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-800/60">
-          <span className="text-[11px] text-slate-500 mr-1 flex items-center gap-1">
-            <Filter className="w-3 h-3" /> Category:
-          </span>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                selectedCategory === cat
-                  ? 'bg-indigo-500 text-white font-semibold'
-                  : 'bg-slate-800/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* 8 Mandatory Category Pills */}
+        <div className="pt-2 border-t border-slate-800/60">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Filter className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              8 Core Legal Provisions:
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {CORE_CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/20'
+                      : 'bg-slate-800/60 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60'
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Results Header */}
       <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-        <span>Showing <strong className="text-slate-200">{filteredClauses.length}</strong> of {clauses?.length || 0} extracted clauses</span>
-        <span className="flex items-center gap-1.5 text-cyan-400 text-[11px]">
-          <Sparkles className="w-3 h-3" /> All risks backed by Module 7 Verbatim Evidence Grounding
+        <span>Showing <strong className="text-white">{filteredClauses.length}</strong> of {clauses?.length || 0} extracted clauses</span>
+        <span className="flex items-center gap-1.5 text-cyan-400 text-[11px] font-mono">
+          <Sparkles className="w-3.5 h-3.5" /> Verbatim Provenance & Grounded Rationale
         </span>
       </div>
 
       {/* Clause Cards List */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         {filteredClauses.length === 0 ? (
-          <div className="glass-panel p-12 text-center border border-slate-800 bg-slate-900/30">
+          <div className="glass-panel p-12 text-center border border-slate-800 bg-slate-900/30 rounded-2xl">
             <FileText className="w-10 h-10 text-slate-600 mx-auto mb-2" />
             <p className="text-slate-400 text-sm">No clauses matched the selected filters.</p>
             <button 
@@ -140,89 +188,151 @@ export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
           </div>
         ) : (
           filteredClauses.map((clause, idx) => {
-            const isHigh = clause.risk_level === 'High';
-            const isMed = clause.risk_level === 'Medium';
+            const riskUpper = (clause.risk_level || 'LOW').toUpperCase();
+            const isHigh = riskUpper.includes('HIGH');
+            const isMed = riskUpper.includes('MED');
+
+            const clauseId = clause.id || `CLAUSE-${(idx + 1).toString().padStart(3, '0')}`;
+            const verbatimText = clause.verbatim_text || clause.raw_text || clause.cleaned_text || '';
 
             return (
               <div
-                key={clause.id || idx}
-                className={`glass-panel p-5 border transition-all rounded-xl ${
+                key={clauseId}
+                className={`glass-panel p-6 border transition-all rounded-2xl shadow-xl relative overflow-hidden ${
                   isHigh 
-                    ? 'border-red-900/50 bg-red-950/10 hover:border-red-500/50' 
+                    ? 'border-red-900/60 bg-gradient-to-b from-red-950/20 to-slate-900/70 hover:border-red-500/60' 
                     : isMed 
-                    ? 'border-amber-900/50 bg-amber-950/10 hover:border-amber-500/50' 
-                    : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
+                    ? 'border-amber-900/60 bg-gradient-to-b from-amber-950/20 to-slate-900/70 hover:border-amber-500/60' 
+                    : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
                 }`}
               >
-                {/* Clause Header */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
-                      Clause #{clause.index + 1}
+                {/* Clause Header Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-200 border border-slate-700 font-bold">
+                      {clauseId}
                     </span>
 
-                    <span className="badge-category">
+                    <span className="badge-category font-semibold text-xs">
                       {clause.category}
                     </span>
 
                     {clause.page_number && (
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-xs text-slate-400 font-mono px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/60">
                         Page {clause.page_number}
+                      </span>
+                    )}
+
+                    {clause.related_clause_ids && clause.related_clause_ids.length > 0 && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-cyan-300 border border-indigo-500/40">
+                        🔗 {clause.related_clause_ids.length} Linked in Risk Chain
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className={
-                      isHigh ? 'badge-risk-high' : isMed ? 'badge-risk-medium' : 'badge-risk-low'
-                    }>
-                      {clause.risk_level} Risk
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
+                      isHigh ? 'bg-red-500/20 text-red-300 border-red-500/50' : isMed ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                    }`}>
+                      {isHigh ? 'HIGH RISK' : isMed ? 'MEDIUM CAUTION' : 'LOW RISK'}
                     </span>
 
                     <button
                       onClick={() => setSelectedClauseEvidence(clause)}
                       className="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-xs font-medium flex items-center gap-1.5 transition-colors"
-                      title="Inspect verbatim evidence (Module 7)"
+                      title="Inspect verbatim evidence & grounding"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Inspect Evidence</span>
+                      <span>Inspect Grounding</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Clause Body Text */}
-                <div className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800/80 mb-3 text-xs text-slate-200 leading-relaxed font-mono">
-                  {clause.cleaned_text || clause.raw_text}
-                </div>
-
-                {/* AI Risk Reasoning */}
-                {clause.risk_reasoning && (
-                  <div className="flex items-start gap-2 text-xs">
-                    <Shield className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
-                      isHigh ? 'text-red-400' : isMed ? 'text-amber-400' : 'text-emerald-400'
-                    }`} />
-                    <span className="text-slate-400">
-                      <strong className="text-slate-300">AI Assessment: </strong>
-                      {clause.risk_reasoning}
-                    </span>
+                {/* Feature 1: Plain-Language Summary Box */}
+                {clause.simple_explanation && (
+                  <div className="mb-4 p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-xs text-indigo-200 leading-relaxed flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <strong className="text-cyan-300 font-semibold block mb-0.5">
+                        Simple Language Summary (Non-Legal Translation):
+                      </strong>
+                      <span>{clause.simple_explanation}</span>
+                    </div>
                   </div>
                 )}
 
-                {/* Direct Verbatim Evidence Snippets */}
-                {clause.risks && clause.risks.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-800/60 flex flex-wrap gap-2">
-                    {clause.risks.map((r, rIdx) => (
-                      <div 
-                        key={rIdx}
-                        className="text-[11px] px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1.5"
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          r.severity === 'High' ? 'bg-red-400' : 'bg-amber-400'
-                        }`} />
-                        <span className="font-semibold text-slate-200">{r.risk_type}:</span>
-                        <span className="text-slate-400 italic">"{r.evidence_text}"</span>
+                {/* Feature 1: Verbatim Source Excerpt */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                    <span className="font-semibold uppercase tracking-wider">Verbatim Contract Excerpt (Original Text)</span>
+                    <span className="font-mono text-slate-500">Exact Provenance · Page {clause.page_number || 1}</span>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 font-mono leading-relaxed max-h-36 overflow-y-auto">
+                    {verbatimText}
+                  </div>
+                </div>
+
+                {/* Feature 1: Statutory Evidence Grounding Citation */}
+                {clause.legal_evidence && (
+                  <div className="mb-4 p-3 rounded-xl bg-amber-950/25 border border-amber-500/30 text-xs text-amber-200 flex items-start gap-2.5">
+                    <Scale className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <strong className="text-amber-300 font-semibold block mb-0.5">
+                        Statutory Evidence & Legal Doctrine:
+                      </strong>
+                      <span className="font-mono text-amber-200 font-medium">{clause.legal_evidence}</span>
+                      {clause.risk_reasoning && (
+                        <p className="text-slate-300 text-[11px] mt-1">{clause.risk_reasoning}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Feature 2: Mitigation Engine ("How Can It Be Changed?") */}
+                {(isHigh || isMed) && clause.suggested_change && (
+                  <div className="mt-4 p-4 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Actionable Mitigation Engine · Suggested Counter-Proposal</span>
                       </div>
-                    ))}
+                      
+                      <button
+                        onClick={() => handleCopyProposal(clauseId, clause.suggested_change)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                          copiedClauseId === clauseId 
+                            ? 'bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20' 
+                            : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                        }`}
+                      >
+                        {copiedClauseId === clauseId ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Copied to Clipboard!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy Counter-Proposal</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/20 text-xs text-emerald-200 font-mono leading-relaxed">
+                      "{clause.suggested_change}"
+                    </div>
+                  </div>
+                )}
+
+                {/* Feature 3: Role Priority Shift Explanation */}
+                {clause.role_reasoning && (
+                  <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center gap-2 text-xs text-slate-400">
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                    <span>
+                      <strong className="text-slate-300">Personalized Role Impact: </strong>
+                      {clause.role_reasoning}
+                    </span>
                   </div>
                 )}
 
@@ -232,7 +342,7 @@ export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
         )}
       </div>
 
-      {/* Module 7: Verbatim Evidence Modal Drawer */}
+      {/* Verbatim Grounding Modal Drawer */}
       {selectedClauseEvidence && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="glass-panel border border-slate-700 bg-slate-900 max-w-2xl w-full p-6 rounded-2xl shadow-2xl relative max-h-[85vh] overflow-y-auto">
@@ -243,8 +353,8 @@ export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
                   <span className="font-bold text-lg text-white">Verbatim Evidence Grounding</span>
                   <span className="badge-category">{selectedClauseEvidence.category}</span>
                 </div>
-                <p className="text-xs text-slate-400">
-                  Clause #{selectedClauseEvidence.index + 1} · Page {selectedClauseEvidence.page_number || 1} · Module 7 Explainable AI
+                <p className="text-xs text-slate-400 font-mono">
+                  {selectedClauseEvidence.id} · Page {selectedClauseEvidence.page_number || 1} · Module 3 Statutory Grounding
                 </p>
               </div>
 
@@ -259,55 +369,43 @@ export default function ClauseExplorer({ clauses, selectedSeverity = 'All' }) {
             {/* Complete Raw Text */}
             <div className="mb-4">
               <h4 className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
-                Full Clause Text
+                Full Verbatim Clause
               </h4>
               <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 font-mono leading-relaxed max-h-48 overflow-y-auto">
-                {selectedClauseEvidence.raw_text}
+                {selectedClauseEvidence.verbatim_text || selectedClauseEvidence.raw_text}
               </div>
             </div>
 
-            {/* Extracted Evidence Snippets */}
-            <div>
+            {/* Statutory Law Authority */}
+            <div className="mb-4">
               <h4 className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                Detected Unfavorable Conditions (Verbatim Proof)
+                <Scale className="w-3.5 h-3.5 text-amber-400" />
+                Statutory Authority & Grounded Precedent
               </h4>
-
-              {selectedClauseEvidence.risks && selectedClauseEvidence.risks.length > 0 ? (
-                <div className="space-y-3">
-                  {selectedClauseEvidence.risks.map((risk, i) => (
-                    <div 
-                      key={i}
-                      className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-200">{risk.risk_type}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          risk.severity === 'High' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'
-                        }`}>
-                          {risk.severity} Severity
-                        </span>
-                      </div>
-                      <p className="text-slate-400 text-[11px]">{risk.description}</p>
-                      <div className="p-2 rounded bg-indigo-950/30 border border-indigo-900/50 text-indigo-300 font-mono text-[11px]">
-                        <strong>Verbatim Quote: </strong>"{risk.evidence_text}"
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl bg-slate-950/60 text-xs text-slate-400 text-center">
-                  No critical risk pattern violations detected in this clause. Standard commercial terms.
-                </div>
-              )}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-amber-500/30 text-xs text-amber-200 font-mono">
+                {selectedClauseEvidence.legal_evidence}
+              </div>
             </div>
+
+            {/* Mitigation Suggestion */}
+            {selectedClauseEvidence.suggested_change && (
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider flex items-center gap-1.5 text-emerald-400">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Proposed Counter-Proposal Clause
+                </h4>
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-emerald-500/30 text-xs text-emerald-200 font-mono">
+                  "{selectedClauseEvidence.suggested_change}"
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 pt-3 border-t border-slate-800 flex justify-end">
               <button
                 onClick={() => setSelectedClauseEvidence(null)}
                 className="btn-secondary text-xs px-4 py-2"
               >
-                Close Inspector
+                Close Grounding Inspector
               </button>
             </div>
 

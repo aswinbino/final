@@ -22,9 +22,9 @@ class ReportGenerator:
     ) -> Dict[str, Any]:
         """Consolidate all module outputs into a clean structured JSON report."""
 
-        high_clauses = [c for c in clauses if c.get("risk_level") == "High"]
-        medium_clauses = [c for c in clauses if c.get("risk_level") == "Medium"]
-        low_clauses = [c for c in clauses if c.get("risk_level") == "Low"]
+        high_clauses = [c for c in clauses if str(c.get("risk_level", "")).upper() == "HIGH"]
+        medium_clauses = [c for c in clauses if str(c.get("risk_level", "")).upper() == "MEDIUM"]
+        low_clauses = [c for c in clauses if str(c.get("risk_level", "")).upper() == "LOW"]
 
         return {
             "report_metadata": {

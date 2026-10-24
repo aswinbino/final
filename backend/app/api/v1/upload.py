@@ -1,6 +1,7 @@
 """
-Module 1: Contract Upload & Document Processing API
+Module 1: Contract Upload & Document Ingestion Status API
 POST /api/v1/upload
+GET  /api/v1/upload/{contract_id}/status
 """
 
 import os
@@ -31,7 +32,7 @@ ALLOWED_TYPES = {
 
 
 async def process_contract_background(contract_id: str, file_path: str, filename: str, db_url: str):
-    """Background task: parse document and store text."""
+    """Background task: parse document and store text and metadata."""
     from app.core.database import AsyncSessionLocal
     async with AsyncSessionLocal() as db:
         try:
@@ -46,10 +47,11 @@ async def process_contract_background(contract_id: str, file_path: str, filename
             parsed = DocumentParser.parse(file_path, filename)
             contract.raw_text = parsed["raw_text"]
             contract.page_count = parsed["page_count"]
+            contract.extracted_clause_count = parsed.get("extracted_clause_count", 0)
             contract.status = "done"
             await db.commit()
 
-            logger.info(f"Contract {contract_id} processed: {parsed['page_count']} pages")
+            logger.info(f"Contract {contract_id} processed: {parsed['page_count']} pages, {parsed.get('extracted_clause_count')} clauses.")
         except Exception as e:
             logger.error(f"Processing failed for contract {contract_id}: {e}")
             result = await db.execute(select(Contract).where(Contract.id == contract_id))
@@ -60,26 +62,24 @@ async def process_contract_background(contract_id: str, file_path: str, filename
                 await db.commit()
 
 
-@router.post("", response_model=UploadResponse, summary="Upload a contract document")
+@router.post("", response_model=UploadResponse, summary="Upload a contract document (Module 1)")
 async def upload_contract(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF or DOCX contract file"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Upload a contract file (PDF or DOCX).
+    Module 1: Upload a contract file (PDF or DOCX).
     - Validates file type and size.
     - Stores the file and queues background text extraction.
-    - Returns a contract_id for subsequent API calls.
+    - Returns document confirmation metadata.
     """
-    # Validate content type
     if file.content_type not in ALLOWED_TYPES and not file.filename.lower().endswith((".pdf", ".docx", ".doc", ".txt")):
         raise HTTPException(
             status_code=415,
-            detail=f"Unsupported file type: '{file.content_type}'. Please upload a PDF, DOCX, or TXT file.",
+            detail=f"Unsupported file type: '{file.content_type}'. Please upload a PDF or DOCX contract document.",
         )
 
-    # Read and validate size
     content = await file.read()
     file_size = len(content)
     max_bytes = settings.MAX_FILE_SIZE_MB * 1024 * 1024
@@ -87,27 +87,25 @@ async def upload_contract(
     if file_size > max_bytes:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size / 1_048_576:.1f} MB). Maximum is {settings.MAX_FILE_SIZE_MB} MB.",
+            detail=f"File too large ({file_size / 1_048_576:.1f} MB). Maximum allowed is {settings.MAX_FILE_SIZE_MB} MB.",
         )
 
     if file_size == 0:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+        raise HTTPException(status_code=400, detail="Uploaded contract file is empty.")
 
-    # Determine extension
     suffix = Path(file.filename).suffix.lower() or ".pdf"
-    contract_id = str(uuid.uuid4())
+    contract_id = f"doc_{uuid.uuid4().hex[:8]}"
     safe_filename = f"{contract_id}{suffix}"
     upload_path = Path(settings.UPLOAD_DIR) / safe_filename
     upload_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Save file
     try:
         with open(upload_path, "wb") as f:
             f.write(content)
     except OSError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to write file to storage: {str(e)}")
 
-    # Create DB record
+    # Create Contract record
     contract = Contract(
         id=contract_id,
         filename=safe_filename,
@@ -116,11 +114,13 @@ async def upload_contract(
         file_type=suffix.lstrip("."),
         file_size=file_size,
         status="uploaded",
+        page_count=1,
+        extracted_clause_count=0,
     )
     db.add(contract)
     await db.commit()
 
-    # Queue background processing
+    # Queue background parsing
     background_tasks.add_task(
         process_contract_background,
         contract_id, str(upload_path), file.filename, settings.DATABASE_URL
@@ -132,15 +132,16 @@ async def upload_contract(
         contract_id=contract_id,
         filename=file.filename,
         file_type=suffix.lstrip("."),
-        page_count=None,
+        page_count=1,
+        total_clauses=0,
         status="uploaded",
-        message="Contract uploaded successfully. Processing started in background.",
+        message="Contract uploaded successfully. Document ingestion started.",
     )
 
 
-@router.get("/{contract_id}/status", summary="Check contract processing status")
+@router.get("/{contract_id}/status", summary="Check contract ingestion status (Module 1)")
 async def get_contract_status(contract_id: str, db: AsyncSession = Depends(get_db)):
-    """Check the processing status of an uploaded contract."""
+    """Check the ingestion status and confirmation metadata of an uploaded contract."""
     result = await db.execute(select(Contract).where(Contract.id == contract_id))
     contract = result.scalar_one_or_none()
 
@@ -149,8 +150,12 @@ async def get_contract_status(contract_id: str, db: AsyncSession = Depends(get_d
 
     return {
         "contract_id": contract_id,
-        "status": contract.status,
         "filename": contract.original_name,
-        "page_count": contract.page_count,
+        "total_pages": contract.page_count or 1,
+        "clause_count": contract.extracted_clause_count or 0,
+        "extracted_clause_count": contract.extracted_clause_count or 0,
+        "status": contract.status,
+        "processing_status": "NLP Pipeline Complete" if contract.status == "done" else contract.status,
+        "file_type": contract.file_type,
         "error": contract.error_message,
     }

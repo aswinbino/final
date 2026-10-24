@@ -12,12 +12,10 @@ import {
 } from 'lucide-react';
 
 const ROLES = [
-  { value: 'Freelancer', label: 'Freelancer / Contractor', icon: '💻' },
-  { value: 'Tenant', label: 'Tenant / Lessee', icon: '🏢' },
+  { value: 'Freelancer / Contractor', label: 'Freelancer / Contractor', icon: '💻' },
+  { value: 'Tenant', label: 'Tenant / Commercial Lessee', icon: '🏢' },
   { value: 'Employee', label: 'Employee / Staff', icon: '💼' },
-  { value: 'Business Owner', label: 'Business Owner', icon: '👔' },
-  { value: 'Vendor', label: 'Vendor / Supplier', icon: '📦' },
-  { value: 'General', label: 'General / Standard', icon: '⚖️' },
+  { value: 'Client / Small Business Owner', label: 'Client / Small Business Owner', icon: '👔' },
 ];
 
 export default function Navbar({ 

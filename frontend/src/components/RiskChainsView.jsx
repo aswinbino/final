@@ -6,7 +6,10 @@ import {
   Layers, 
   ShieldAlert, 
   Info,
-  CheckCircle2
+  CheckCircle2,
+  Tag,
+  Link2,
+  Sparkles
 } from 'lucide-react';
 
 export default function RiskChainsView({ riskChains, clauses }) {
@@ -14,121 +17,143 @@ export default function RiskChainsView({ riskChains, clauses }) {
     return (
       <div className="glass-panel p-12 text-center border border-slate-800 bg-slate-900/40 rounded-2xl">
         <GitFork className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-        <h3 className="text-base font-semibold text-slate-200 mb-1">No Compounding Risk Chains Detected</h3>
+        <h3 className="text-base font-semibold text-slate-200 mb-1">No Cascading Risk Chains Detected</h3>
         <p className="text-xs text-slate-400 max-w-md mx-auto">
-          The clauses in this contract appear largely modular without cascading legal dependency traps (such as Payment default triggering immediate liquidated damages + unilateral termination).
+          The clauses in this contract appear largely modular without cascading domino triggers (e.g. delivery delay triggering daily penalties, which trigger fee withholding, escalating into immediate contract termination).
         </p>
       </div>
     );
   }
 
-  // Map clause ID to clause details
+  // Map clause ID / code to clause details
   const clauseMap = (clauses || []).reduce((acc, c) => {
     acc[c.id] = c;
+    if (c.clause_code) acc[c.clause_code] = c;
     return acc;
   }, {});
+
+  const getLinkBasisBadge = (basis) => {
+    switch (basis) {
+      case 'Cross-Reference':
+        return 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40';
+      case 'Shared Defined Term':
+        return 'bg-purple-500/15 text-purple-300 border-purple-500/40';
+      default:
+        return 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40';
+    }
+  };
 
   return (
     <div className="space-y-6">
       
-      {/* Module Overview Banner */}
-      <div className="glass-panel p-5 border border-indigo-900/40 bg-gradient-to-r from-indigo-950/30 to-slate-900/50 rounded-2xl">
-        <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-cyan-300 flex-shrink-0 mt-0.5">
-            <GitFork className="w-5 h-5" />
+      {/* Module 6 Overview Banner */}
+      <div className="glass-panel p-5 border border-indigo-900/50 bg-gradient-to-r from-indigo-950/40 via-slate-900/60 to-slate-900/80 rounded-2xl">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-cyan-300 flex-shrink-0 mt-0.5 shadow-lg shadow-indigo-500/10">
+            <GitFork className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-white text-sm">Module 5 · Compounding Legal Risk Chains</h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                {riskChains.length} Chains Identified
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <h3 className="font-bold text-white text-base">
+                Module 6 · Cross-Clause Relationship & Interconnected Risk Chains
+              </h3>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono">
+                {riskChains.length} Cascades Identified
               </span>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Standard contract reviews analyze clauses in isolation. ClauseGuard's <strong>Risk Chain Engine</strong> traces multi-clause domino effects where separate obligations (e.g. strict payment deadlines, liquidated damages, and unilateral termination) combine to amplify total liability exposure.
+            <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
+              Traditional contract reviews evaluate clauses in isolation. ClauseGuard's <strong>Cascading Risk Engine</strong> traces multi-clause domino effects where separate terms combine to amplify exposure. Links are mapped across 
+              <span className="text-cyan-300 font-medium"> Explicit Cross-References</span>, 
+              <span className="text-purple-300 font-medium"> Shared Defined Terms</span>, and 
+              <span className="text-indigo-300 font-medium"> Semantic Candidates (FAISS)</span>.
             </p>
           </div>
         </div>
       </div>
 
       {/* Chain Cards */}
-      <div className="space-y-5">
+      <div className="space-y-6">
         {riskChains.map((chain, idx) => {
-          const isHigh = chain.combined_risk === 'High';
+          const isHigh = (chain.combined_risk || 'HIGH').toUpperCase() === 'HIGH';
+          const linkBasis = chain.link_basis || 'Cross-Reference';
 
           return (
             <div 
               key={chain.chain_id || idx}
-              className={`glass-panel p-6 border rounded-2xl relative overflow-hidden transition-all ${
+              className={`glass-panel p-6 border rounded-2xl relative overflow-hidden transition-all shadow-xl ${
                 isHigh 
-                  ? 'border-red-900/60 bg-red-950/15 hover:border-red-500/50' 
-                  : 'border-amber-900/60 bg-amber-950/15 hover:border-amber-500/50'
+                  ? 'border-red-900/60 bg-gradient-to-b from-red-950/15 via-slate-900/70 to-slate-900/90 hover:border-red-500/50' 
+                  : 'border-amber-900/60 bg-gradient-to-b from-amber-950/15 via-slate-900/70 to-slate-900/90 hover:border-amber-500/50'
               }`}
             >
               {/* Card Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-xs font-mono font-bold">
-                    #{idx + 1}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono font-bold">
+                    {chain.chain_id || `CHAIN-${idx + 1}`}
                   </span>
-                  <h4 className="font-bold text-base text-slate-100">{chain.title}</h4>
+                  <h4 className="font-bold text-base text-white">
+                    {chain.title || chain.description}
+                  </h4>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border ${
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Link Basis Tag */}
+                  <span className={`text-[11px] font-mono px-2.5 py-1 rounded-lg border flex items-center gap-1 font-semibold ${getLinkBasisBadge(linkBasis)}`}>
+                    <Link2 className="w-3 h-3" />
+                    <span>Basis: {linkBasis}</span>
+                  </span>
+
+                  {/* Compounded Risk Badge */}
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
                     isHigh ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                   }`}>
-                    {chain.combined_risk} Compounded Risk
+                    {chain.combined_risk || 'HIGH'} Cascading Risk
                   </span>
                 </div>
               </div>
 
-              {/* Chain Description */}
-              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 mb-5 text-xs text-slate-300 leading-relaxed flex items-start gap-2.5">
+              {/* Chain Rationale / Description */}
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 mb-5 text-xs text-slate-300 leading-relaxed flex items-start gap-3">
                 <AlertTriangle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isHigh ? 'text-red-400' : 'text-amber-400'}`} />
                 <div>
-                  <strong className="text-white">Cascading Impact: </strong>
+                  <strong className="text-white block mb-0.5">Cascading Trigger Explanation: </strong>
                   {chain.description}
                 </div>
               </div>
 
-              {/* Linked Nodes Flow */}
+              {/* Step Sequence Flow Rendering */}
               <div>
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-3">
-                  Interconnected Clauses in this Chain:
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-3 font-mono">
+                  Cascading Chain Sequence ({chain.sequence?.length || (chain.clauses?.length || 0)} Trigger Steps):
                 </span>
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
-                  {chain.clauses.map((clauseId, cIdx) => {
-                    const clause = clauseMap[clauseId] || { 
-                      id: clauseId, 
-                      category: 'Linked Clause', 
-                      index: cIdx, 
-                      risk_level: 'High' 
-                    };
-
+                <div className="space-y-3">
+                  {(chain.sequence || []).map((stepText, sIdx) => {
+                    const isLast = sIdx === (chain.sequence.length - 1);
                     return (
-                      <React.Fragment key={clauseId}>
-                        <div className="flex-1 p-3.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors">
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="badge-category text-[10px]">
-                              {clause.category}
-                            </span>
-                            <span className="text-[10px] font-mono text-slate-500">
-                              Clause #{clause.index !== undefined ? clause.index + 1 : '—'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-300 line-clamp-2 font-mono">
-                            {clause.cleaned_text || clause.raw_text || "Referenced contractual obligation"}
-                          </p>
+                      <div key={sIdx} className="flex items-start gap-3 relative">
+                        {/* Step Number Circle */}
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center font-mono text-xs font-bold flex-shrink-0 z-10 ${
+                          sIdx === 0 ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' :
+                          isLast ? 'bg-red-500 text-white shadow-md shadow-red-500/20' :
+                          'bg-indigo-600 text-white'
+                        }`}>
+                          {sIdx + 1}
                         </div>
 
-                        {cIdx < chain.clauses.length - 1 && (
-                          <div className="flex items-center justify-center text-slate-600 py-1 md:py-0">
-                            <ArrowRight className="w-4 h-4 transform rotate-90 md:rotate-0 text-indigo-400" />
-                          </div>
+                        {/* Connecting Line */}
+                        {!isLast && (
+                          <div className="absolute left-3.5 top-7 bottom-0 w-0.5 bg-slate-800 -mb-3 z-0" />
                         )}
-                      </React.Fragment>
+
+                        {/* Step Card Content */}
+                        <div className="flex-1 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
+                          <p className="text-xs font-mono font-medium text-slate-200">
+                            {stepText}
+                          </p>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
