@@ -5,7 +5,12 @@
   "installCommand": "cd frontend && npm install",
   "framework": null,
   "env": {
-    "VITE_API_URL": "https://<your-railway-app>.up.railway.app"
+    "VITE_API_URL": "https://final-3zww.onrender.com"
+  },
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.11"
+    }
   },
   "rewrites": [
     {
